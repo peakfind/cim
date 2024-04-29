@@ -5,48 +5,9 @@
 ---------------------------------------------------------=#
 
 using LinearAlgebra
-using Plots
 
-# contours that we plan to support
-abstract type AbstractContour end
 
-# TODO: Can we provide a generic method for different types of contours?
-struct ellipse <: AbstractContour
-    center::ComplexF64 # TODO: store the vector{F64} or complex?
-    semi_x::Float64
-    semi_y::Float64
-end
-
-struct rectangle <: AbstractContour
-    center::Vector{Float64}
-    semi_x::Float64
-    semi_y::Float64
-end
-
-struct circle <: AbstractContour
-    center::Vector{Float64}
-    radius::Float64
-end
-
-function show_contr(contour::AbstractContour)
-    if typeof(contour) == ellipse
-        # plot()
-    elseif typeof(contour) == circle
-        # plot()
-    elseif typeof(contour) == rectangle
-        # plot()
-    else
-        # throw some error : unsupported type of contour
-        throw(ArgumentError("unspported type of contour"))
-    end
-end
-
-# TODO: how to combine quadrature rules with the contours?
-struct quadrature{shape}
-    reference::shape
-    nodes::Vector{Vector{Float64}}
-    weights::Vector{Float64}
-end
+include("geometry.jl")
 
 function T(z, D)
     NEP = zeros(ComplexF64, D, D)
@@ -89,16 +50,18 @@ function cont_int(ellip::ellipse, T::Function, D, L, N)
         theta = n * delta
         c = cos(theta)
         s = sin(theta)
-		z1 = complex(ellip.semi_x * c, ellip.semi_y * s)
+		z1 = complex(ellip.semi_x * c, ellip.semi_y * s)     # quad pts
 		dz = complex(ellip.semi_y * c, ellip.semi_x * s) / N 
-		A0 = A0 + inv(T(ellip.center+z1, D)) * Vhat * dz
-		A1 = A1 + z1 * inv(T(ellip.center+z1, D)) * Vhat * dz
+		A0 = A0 + inv(T(complex(ellip.center[1], ellip.center[2])+z1, D)) * Vhat * dz
+		A1 = A1 + z1 * inv(T(complex(ellip.center[1], ellip.center[2])+z1, D)) * Vhat * dz
     end
+
+    @show A0, A1
 
     # SVD of A0
     (V, Sig, W) = svd(A0)
 
-    tol = 1.0e-8
+    tol = 1.0e-12
     k = length(findall(abs.(Sig) .> tol))
     println("Find $(k) nonzero singular values.")
 
@@ -108,17 +71,17 @@ function cont_int(ellip::ellipse, T::Function, D, L, N)
 	V_k = V[:, 1:k]
     Sig_k = Sig[1:k]
     W_k = W[:, 1:k]
-    B = V_k' * A1 * W_k * diagm(1 ./ Sig_k)
+    B = V_k' * A1 * W_k * inv(diagm(Sig_k))
 
     # solve the eigenvalue problem for B
     lambda = eigvals(B)
     V = eigvecs(B)
-    lambda = lambda + ellip.center*ones(size(lambda))
+    # lambda = lambda + ellip.center*ones(size(lambda))
 
     return lambda, V
 end
 
-ell1 = ellipse(complex(150.0, 0.0), 148.0, 148.0)
+ell1 = ellipse([150.0, 2.0], 148.0, 5.0)
 
-(Lambda, v) = cont_int(ell1, T, 400, 10, 50)
+(Lambda, v) = cont_int(ell1, T, 20, 10, 25);
 @show Lambda
