@@ -10,4 +10,6 @@ There are three references for the Contour Integral Method：
 # Implementation
 We plan to refer to some `Julia` codes which implement the Contour Integral Method:
 + the native `Julia` implementation in [**libBeyn**](https://github.com/HomerReid/libBeyn) writen by Homer Reid. 
-+ [**NEP-PACK/NonlinearEigenproblems.jl**](https://github.com/nep-pack/NonlinearEigenproblems.jl)
++ [**NEP-PACK/NonlinearEigenproblems.jl**](https://github.com/nep-pack/NonlinearEigenproblems.jl).
+
+A basic `MATLAB` implementation can be found in Figure 5.3 in Stefan G&uuml;ttel, Francoise Tisseur, [The nonlinear eigenvalue problem, **Acta Numerica, 2017**](https://doi.org/10.1017/S0962492917000034).
