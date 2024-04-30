@@ -1,87 +1,110 @@
-#=---------------------------------------------------------
+#=-------------------------------------------------------------------------------------
 - cim.jl
-- TODO: we should write a script to implement the method first
+- 
+- references:
+- 1. Wolf-Jurgen Beyn, An integral method for solving NEPs, Linear Algebra Appl., 2012.
+- 2. Stefan Guttel, Francoise Tisseur, The NEP, Acta Numerica, 2017.
 -
----------------------------------------------------------=#
+-------------------------------------------------------------------------------------=#
 
 using LinearAlgebra
-
-
 include("geometry.jl")
 
-function T(z, D)
-    NEP = zeros(ComplexF64, D, D)
-    ed = 2.0*D - 4.0*z/(6.0*D) # diagonal entry
-	eoffd = -1.0*D - z/(6.0*D) # off-diagonal entry
-
-	# top row
-	NEP[1, 1] = ed
-	NEP[1, 2] = eoffd
-
-	# interior rows
-	for d = 2:D-1
-		NEP[d,d] = ed
-		NEP[d,d-1] = NEP[d,d+1] = eoffd
-    end
-
-	NEP[D, D-1] = eoffd # bottom row
-	NEP[D, D] = 0.5*ed + z/(z-1.0)
-
-	return NEP
-end
-
-#  N + 1 : the number of quadrature nodes
-#  ellip : the contour
-#  D     : the size of the NEP
-#  L     : a number between D and k                     
-#  T     : the matrix of the NEP
-function cont_int(ellip::ellipse, T::Function, D, L, N)
-
+"""
+NEP: the matrix function of the nonlinear eigenvalue problem
+D: the size of the NEP
+L: a number between k(the number of eigenvalues inside the contour) and D, k <= L <= D
+"""
+function contr_int(pts::quadpts, NEP::Function, D, L)
+    # initialization
     A0 = zeros(ComplexF64, D, L)
     A1 = zeros(ComplexF64, D, L)
-
-    # generate random matrix Vhat
     Vhat = randn(ComplexF64, D, L)
 
-    # compute A0 and A1 (contour integrals with some quadrature rules)
-	# here we use trapezoid rule on a ellipse
-    delta = 2*pi/N
-    for n = 0:N - 1
-        theta = n * delta
-        c = cos(theta)
-        s = sin(theta)
-		z1 = complex(ellip.semi_x * c, ellip.semi_y * s)     # quad pts
-		dz = complex(ellip.semi_y * c, ellip.semi_x * s) / N 
-		A0 = A0 + inv(T(complex(ellip.center[1], ellip.center[2])+z1, D)) * Vhat * dz
-		A1 = A1 + z1 * inv(T(complex(ellip.center[1], ellip.center[2])+z1, D)) * Vhat * dz
+    # compute A0 and A1 with trapezoid rule
+    for j in 1:pts.N
+        z = complex(pts.nodes[j, 1], pts.nodes[j, 2])
+        z_prime = complex(pts.nodes_prime[j, 1], pts.nodes_prime[j, 2])
+        A0 = A0 + inv(NEP(z)) * Vhat * z_prime
+        A1 = A1 + inv(NEP(z)) * Vhat * z * z_prime
     end
+    A0 = A0 / (pts.N*im)
+    A1 = A1 / (pts.N*im)
 
-    @show A0, A1
+    # svd of A0
+    println("Compute the SVD of A0.")
+    (V, Sigma, W) = svd(A0)
 
-    # SVD of A0
-    (V, Sig, W) = svd(A0)
-
+    # k: the number of the eigs inside the contour 
     tol = 1.0e-12
-    k = length(findall(abs.(Sig) .> tol))
+    k = count(Sigma/Sigma[1] .> tol)
     println("Find $(k) nonzero singular values.")
 
-    # perform a rank test
+    # compute the matrix B 
+    Vk = V[:,1:k]
+    Sigk = Sigma[1:k]
+    Wk = W[:,1:k]
 
-    # compute the matrix B
-	V_k = V[:, 1:k]
-    Sig_k = Sig[1:k]
-    W_k = W[:, 1:k]
-    B = V_k' * A1 * W_k * inv(diagm(Sig_k))
+    # Diagonal is more efficient
+    B = (Vk' * A1 * Wk) * Diagonal(1 ./ Sigk)
 
-    # solve the eigenvalue problem for B
+    # compute the eigenvalues of B 
     lambda = eigvals(B)
-    V = eigvecs(B)
-    # lambda = lambda + ellip.center*ones(size(lambda))
 
-    return lambda, V
+    return lambda
 end
 
-ell1 = ellipse([150.0, 2.0], 148.0, 5.0)
+"""
+contour integral method with high-order moments 
+pbar: the number of the moments (for p = 0, ..., pbar)
 
-(Lambda, v) = cont_int(ell1, T, 20, 10, 25);
-@show Lambda
+In this function, we follow the notations in Stefan Guttel, Francoise Tisseur, Acta Numerica, 2017
+r,l : size of the probing matrices
+"""
+function contr_int_ho(pts::quadpts, NEP::Function, D::Int64, l::Int64, r::Int64, pbar::Int64)
+    # initialization
+    L = randn(ComplexF64, D, l)
+    R = randn(ComplexF64, D, r)
+    A = zeros(ComplexF64, l, r, 2*pbar)# contains all the moments p = 0, ..., 2*pbar - 1
+
+    # compute moments
+    for j in 1:pts.N
+        z = complex(pts.nodes[j, 1], pts.nodes[j, 2])
+        z_prime = complex(pts.nodes_prime[j, 1], pts.nodes_prime[j, 2])
+        for p in 1:2*pbar
+            A[:,:,p] = A[:,:,p] + (L' * inv(NEP(z)) * R) * (z^p) * z_prime
+        end
+    end
+
+    A = A / (pts.N * im)
+
+    # compute B0 and B1
+    B0 = zeros(ComplexF64, l*pbar, r*pbar)
+    B1 = zeros(ComplexF64, l*pbar, r*pbar)
+
+    for j = 1:pbar
+        B0[1+(j-1)*l:j*l,:] = reshape(A[:,:,j:j+pbar-1], l,:)
+        B1[1+(j-1)*l:j*l,:] = reshape(A[:,:,j+1:j+pbar], l,:) 
+    end
+
+    # svd of B0
+    println("Compute the SVD of B0.")
+    (V, Sigma, W) = svd(B0)
+
+    # mbar: the number of the eigs inside the contour
+    tol = 1.0e-12
+    mbar = count(Sigma/Sigma[1] .> tol)
+    println("Find $(mbar) nonzero singular values.")
+
+    # compute the matrix M
+    Vmbar = V[:,1:mbar]
+    Sigmbar = Sigma[1:mbar]
+    Wmbar = W[:,1:mbar]
+
+    M = (Vmbar' * B1 * Wmbar) * Diagonal(1 ./ Sigmbar)
+
+    # compute the eigenvalues of M
+    lambda = eigvals(M)
+
+    return lambda
+end
