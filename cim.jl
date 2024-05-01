@@ -13,13 +13,13 @@ include("geometry.jl")
 """
 NEP: the matrix function of the nonlinear eigenvalue problem
 D: the size of the NEP
-L: a number between k(the number of eigenvalues inside the contour) and D, k <= L <= D
+l: a number between k(the number of eigenvalues inside the contour) and D, k <= L <= D
 """
-function contr_int(pts::quadpts, NEP::Function, D, L)
+function contr_int(pts::quadpts, NEP::Function, D, l::Int64)
     # initialization
-    A0 = zeros(ComplexF64, D, L)
-    A1 = zeros(ComplexF64, D, L)
-    Vhat = randn(ComplexF64, D, L)
+    A0 = zeros(ComplexF64, D, l)
+    A1 = zeros(ComplexF64, D, l)
+    Vhat = randn(ComplexF64, D, l)
 
     # compute A0 and A1 with trapezoid rule
     for j in 1:pts.N
