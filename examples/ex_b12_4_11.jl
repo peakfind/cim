@@ -1,18 +1,13 @@
 """
 	Example: ex_b12_4_11.jl
 	-------------------------------------------------------
-	reference:
+	reference: Example 4.11 in Wolf-Jurgen Beyn, An integral 
+	           method for solving nonlinear eigenvalue problems
 """
 
 include("../cim.jl")
 
-ellip = ellipse([150.0, 0.0], 148.0, 148.0)
-show_contr(ellip)
-
-N = 50
-pts = get_quadpts(ellip, N)
-show_quadpts(pts)
-
+# define the matrix of the NEP
 function beyn12_411(z::Complex)
     D = 400
     NEP = zeros(ComplexF64, D, D)
@@ -35,5 +30,17 @@ function beyn12_411(z::Complex)
 	return NEP
 end
 
-lambda = contr_int(pts, beyn12_411, 400, 10)
+# parameters
+N = 50 # the number of the quadrature nodes
+l = 10
+
+# define the contour
+ellip = ellipse([150.0, 0.0], 148.0, 148.0)
+show_contr(ellip)
+
+# get the quadrature points
+pts = get_quadpts(ellip, N)
+show_quadpts(pts)
+
+lambda = contr_int(pts, beyn12_411, 400, l)
 show_eigs(lambda)
