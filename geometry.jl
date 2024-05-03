@@ -1,32 +1,42 @@
 using Plots
 # use plotlyjs() to generate interactive figure
 
-# contours that we plan to support:
-#     1. ellipse
-#     2. circle
-#     3. rectangle (not supported yet)
+"""
+contours that we plan to support:
+     1. ellipse
+     2. circle
+     3. rectangle (not supported yet)
+"""
 abstract type AbstractContour end
 
+"""
+"""
 struct ellipse <: AbstractContour
-    center::Vector{Float64} # TODO: store the vector{F64} or complex?
+    center::Vector{Float64} 
     semi_x::Float64
     semi_y::Float64
 end
 
+"""
+"""
 struct rectangle <: AbstractContour
     center::Vector{Float64}
     semi_x::Float64
     semi_y::Float64
 end
 
+"""
+"""
 struct circle <: AbstractContour
     center::Vector{Float64}
     radius::Float64
 end
 
+"""
+"""
 struct quadpts
     N::Int64                            # the number of the quadrature nodes
-    nodes::AbstractArray{Float64}       # quadrature nodes size of N x 2 (we are in 2d now)
+    nodes::AbstractArray{Float64}       # quadrature nodes size of N x 2 
     nodes_prime::AbstractArray{Float64} # derivative of the parametrization size of N x 2
 end
 
@@ -50,7 +60,6 @@ function show_contr(contour::AbstractContour)
 end
 
 # TODO: note that rectangle is different with ellipse and circle
-# TODO: we may add the derivative of the parametrization in quadpts
 function get_quadpts(contour::AbstractContour, num_quadpts::Int64)
     nodes = zeros(num_quadpts, 2)
     nodes_prime = zeros(num_quadpts, 2)

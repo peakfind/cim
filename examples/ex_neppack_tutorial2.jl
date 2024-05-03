@@ -23,10 +23,10 @@ l = 10
 r = 10
 pbar = 6
 
-circ = @btime circle([0.0, 0.0], 0.5)
+circ = circle([0.0, 0.0], 0.5)
 # show_contr(circ)
-pts = @btime get_quadpts(circ, N)
+pts = get_quadpts(circ, N)
 # show_quadpts(pts)
-# lambda = contr_int(pts, NEP, 1000, L)
-lambda = @btime contr_int_ho(pts, NEP, 1000, l, r, pbar)
+lambda = contr_int(pts, NEP, 1000, l)
+#lambda = contr_int_ho(pts, NEP, 400, l, r, pbar)
 @show lambda
