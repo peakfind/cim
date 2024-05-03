@@ -25,8 +25,8 @@ function contr_int(pts::quadpts, NEP::Function, D, l::Int64)
     for j in 1:pts.N
         z = complex(pts.nodes[j, 1], pts.nodes[j, 2])
         z_prime = complex(pts.nodes_prime[j, 1], pts.nodes_prime[j, 2])
-        A0 = A0 + inv(NEP(z)) * Vhat * z_prime
-        A1 = A1 + inv(NEP(z)) * Vhat * z * z_prime
+        A0 = A0 + (NEP(z) \ Vhat) * z_prime
+        A1 = A1 + (NEP(z) \ Vhat) * z * z_prime
     end
     A0 = A0 / (pts.N*im)
     A1 = A1 / (pts.N*im)
@@ -68,11 +68,12 @@ function contr_int_ho(pts::quadpts, NEP::Function, D::Int64, l::Int64, r::Int64,
     A = zeros(ComplexF64, l, r, 2*pbar)# contains all the moments p = 0, ..., 2*pbar - 1
 
     # compute moments
+    # TODO: we need use NEP\R not the inv()
     for j in 1:pts.N
         z = complex(pts.nodes[j, 1], pts.nodes[j, 2])
         z_prime = complex(pts.nodes_prime[j, 1], pts.nodes_prime[j, 2])
         for p in 1:2*pbar
-            A[:,:,p] = A[:,:,p] + (L' * inv(NEP(z)) * R) * (z^p) * z_prime
+            A[:,:,p] = A[:,:,p] + (L' * (NEP(z)\R)) * (z^p) * z_prime
         end
     end
 
