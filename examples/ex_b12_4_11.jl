@@ -6,6 +6,7 @@
 """
 
 include("../cim.jl")
+using BenchmarkTools
 
 # define the matrix of the NEP
 function beyn12_411(z::Complex)
