@@ -97,9 +97,9 @@ function get_quadpts(contour::circle, num_quadpts::Int64)
 end
 
 function show_quadpts(pts::quadpts)
-    display(scatter!(pts.nodes[:,1], pts.nodes[:,2], markershape=:circle, markercolor=:gray, markersize=2, aspect_ratio=:equal))
+    display(scatter!(pts.nodes[:,1], pts.nodes[:,2], legend=:false, markershape=:circle, markercolor=:gray, markersize=2, aspect_ratio=:equal))
 end
 
 function show_eigs(eigs::AbstractArray)
-    display(scatter!(real(eigs), imag(eigs), markershape=:xcross, markercolor=:black, markersize=3, aspect_ratio=:equal))
+    display(scatter!(real(eigs), imag(eigs), legend=:false, markershape=:xcross, markercolor=:black, markersize=3, aspect_ratio=:equal))
 end
