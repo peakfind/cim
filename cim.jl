@@ -16,31 +16,30 @@ D: the size of the NEP
 l: a number between k(the number of eigenvalues inside the contour) and D, k <= L <= D
 """
 function contr_int(pts::quadpts, NEP::Function, D, l::Int64)
-    # initialization
+    # Preallocate arrays
     A0 = zeros(ComplexF64, D, l)
     A1 = zeros(ComplexF64, D, l)
     Vhat = randn(ComplexF64, D, l)
 
-    # compute A0 and A1 with trapezoid rule
+    # Compute A0 and A1 with trapezoid rule
     for j in 1:pts.N
         z = complex(pts.nodes[j, 1], pts.nodes[j, 2])
         z_prime = complex(pts.nodes_prime[j, 1], pts.nodes_prime[j, 2])
-        A0 = A0 + (NEP(z) \ Vhat) * z_prime
-        A1 = A1 + (NEP(z) \ Vhat) * z * z_prime
+        invNEP_Vhat = NEP(z) \ Vhat
+        A0 .+= invNEP_Vhat * z_prime
+        A1 .+= A1 + invNEP_Vhat * z * z_prime
     end
-    A0 = A0 / (pts.N*im)
-    A1 = A1 / (pts.N*im)
+    A0 ./= (pts.N*im)
+    A1 ./= (pts.N*im)
 
-    # svd of A0
-    println("Compute the SVD of A0.")
+    # Compute the SVD of A0
     (V, Sigma, W) = svd(A0)
 
-    # k: the number of the eigs inside the contour 
+    # Determine the number of nonzero singular values 
     tol = 1.0e-12
-    k = count(Sigma/Sigma[1] .> tol)
-    println("Find $(k) nonzero singular values.")
+    k = count(Sigma ./ Sigma[1] .> tol)
 
-    # compute the matrix B 
+    # Compute the matrix B 
     Vk = V[:,1:k]
     Sigk = Sigma[1:k]
     Wk = W[:,1:k]
@@ -48,7 +47,7 @@ function contr_int(pts::quadpts, NEP::Function, D, l::Int64)
     # Diagonal is more efficient
     B = (Vk' * A1 * Wk) * Diagonal(1 ./ Sigk)
 
-    # compute the eigenvalues of B 
+    # Compute the eigenvalues of B 
     lambda = eigvals(B)
 
     return lambda
@@ -105,6 +104,53 @@ function contr_int_ho(pts::quadpts, NEP::Function, D::Int64, l::Int64, r::Int64,
     M = (Vmbar' * B1 * Wmbar) * Diagonal(1 ./ Sigmbar)
 
     # compute the eigenvalues of M
+    lambda = eigvals(M)
+
+    return lambda
+end
+
+function contr_int_ho_gpt(pts::quadpts, NEP::Function, D::Int64, l::Int64, r::Int64, pbar::Int64)
+    # Preallocate arrays
+    L = randn(ComplexF64, D, l)
+    R = randn(ComplexF64, D, r)
+    A = zeros(ComplexF64, l, r, 2*pbar)# contains all the moments p = 0, ..., 2*pbar - 1
+
+    # Compute moments (We need use NEP\R not the inv())
+    for j in 1:pts.N
+        z = complex(pts.nodes[j, 1], pts.nodes[j, 2])
+        z_prime = complex(pts.nodes_prime[j, 1], pts.nodes_prime[j, 2])
+        L_invNEP_R = L' * (NEP(z) \ R)
+        for p in 1:2*pbar
+            A[:,:,p] .+= L_invNEP_R * (z^p) * z_prime
+        end
+    end
+
+    A ./= (pts.N * im)
+
+    # Compute B0 and B1
+    B0 = zeros(ComplexF64, l*pbar, r*pbar)
+    B1 = zeros(ComplexF64, l*pbar, r*pbar)
+
+    for j = 1:pbar
+        B0[1+(j-1)*l:j*l,:] = reshape(A[:,:,j:j+pbar-1], l,:)
+        B1[1+(j-1)*l:j*l,:] = reshape(A[:,:,j+1:j+pbar], l,:) 
+    end
+
+    # Compute the SVD of B0
+    (V, Sigma, W) = svd(B0)
+
+    # Determine the number of nonzero singular values
+    # mbar: the number of the eigs inside the contour
+    tol = 1.0e-12
+    mbar = count(Sigma ./ Sigma[1] .> tol)
+
+    # Compute the matrix M
+    Vmbar = V[:,1:mbar]
+    Sigmbar = Sigma[1:mbar]
+    Wmbar = W[:,1:mbar]
+    M = (Vmbar' * B1 * Wmbar) * Diagonal(1 ./ Sigmbar)
+
+    # Compute the eigenvalues of M
     lambda = eigvals(M)
 
     return lambda
