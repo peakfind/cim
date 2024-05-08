@@ -27,7 +27,7 @@ function contr_int(pts::quadpts, NEP::Function, D, l::Int64)
         z_prime = complex(pts.nodes_prime[j, 1], pts.nodes_prime[j, 2])
         invNEP_Vhat = NEP(z) \ Vhat
         A0 .+= invNEP_Vhat * z_prime
-        A1 .+= A1 + invNEP_Vhat * z * z_prime
+        A1 .+= invNEP_Vhat * z * z_prime
     end
     A0 ./= (pts.N*im)
     A1 ./= (pts.N*im)
